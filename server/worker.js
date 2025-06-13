@@ -3,11 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-dotenv.config();
 
 import { ChatOpenAI } from "@langchain/openai";
 import { OpenAIEmbeddings } from "@langchain/openai";
-// import { ChatGPTPluginRetriever } from "langchain/retrievers/remote";
 import { OpenAIModerationChain } from "langchain/chains";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { json } from 'stream/consumers';
@@ -16,6 +14,7 @@ import { QdrantVectorStore } from "@langchain/qdrant";
 import { QdrantClient } from "@qdrant/js-client-rest";
 
 
+dotenv.config();
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,16 +26,23 @@ const worker = new Worker('file-upload-queue', async (job) => {
 
     try {
         const { fileName, filePath } = job.data;
-        
-        // Load and process the PDF
+
+        //Load PDF
         const loader = new PDFLoader(filePath);
         const docs = await loader.load();
 
+        //quadrant Client
+        // const client = new QdrantClient({
+        //     url: 'http://localhost:6333'
+        // })
+
+        //Open AI Embeddings
         const embeddings = new OpenAIEmbeddings({
             model: 'text-embedding-3-small',
             apiKey: process.env.OPENAI_API_KEY
         });
         
+
         const vectorStore = await QdrantVectorStore.fromExistingCollection(
             embeddings,
             {
@@ -44,13 +50,18 @@ const worker = new Worker('file-upload-queue', async (job) => {
                 collectionName: 'langchainjs-testing'
             }
         );
+
+
         await vectorStore.addDocuments(docs);
         console.log('All Docs Are added to vector store')
+
+
         // Split the text into chunks
         const textSplitter = new CharacterTextSplitter({
             chunkSize: 300,
             chunkOverlap: 0,
         });
+
         
         const texts = await textSplitter.splitDocuments(docs);
         console.log('Split texts:', texts);

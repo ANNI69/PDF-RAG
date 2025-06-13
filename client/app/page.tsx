@@ -1,13 +1,54 @@
 "use client";
 import Image from "next/image";
-import { SignedIn, SignedOut, SignUpButton } from "@clerk/nextjs";
-import { useRef, useState } from "react";
+import { SignedIn, SignedOut, SignUpButton, UserButton } from "@clerk/nextjs";
+import { useRef, useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import Cookies from 'js-cookie';
+
+// Define user state interface
+interface UserState {
+  fullName: string | null;
+  email: string | null;
+  lastActive: string;
+}
 
 export default function Home() {
+
+  const { user } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState<string>('');
   const [jobId, setJobId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{ text: string; isUser: boolean }>>([
+    { text: "Hello! How can I assist you today?", isUser: false }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [userState, setUserState] = useState<UserState>({
+    fullName: null,
+    email: null,
+    lastActive: new Date().toISOString()
+  });
+
+  // Load user state from cookies on component mount
+  useEffect(() => {
+    const savedUserState = Cookies.get('userState');
+    if (savedUserState) {
+      setUserState(JSON.parse(savedUserState));
+    }
+  }, []);
+
+  // Update user state and cookies when user data changes
+  useEffect(() => {
+    if (user) {
+      const newUserState = {
+        fullName: user.fullName,
+        email: user.primaryEmailAddress?.emailAddress || null,
+        lastActive: new Date().toISOString()
+      };
+      setUserState(newUserState);
+      Cookies.set('userState', JSON.stringify(newUserState), { expires: 7 }); // Expires in 7 days
+    }
+  }, [user]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -49,6 +90,38 @@ export default function Home() {
         setUploadStatus('error');
         setUploadMessage('Network error. Please try again.');
       }
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    // Add user message
+    setMessages(prev => [...prev, { text: inputMessage, isUser: true }]);
+    setInputMessage('');
+
+    try {
+      // TODO: Replace with actual API call to your backend
+      const response = await fetch(`http://localhost:8000/chat?message=${encodeURIComponent(inputMessage)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+      
+      // Add AI response
+      setMessages(prev => [...prev, { text: data.message || "I'm sorry, I couldn't process that request.", isUser: false }]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, { text: "Sorry, there was an error processing your message.", isUser: false }]);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
     }
   };
 
@@ -138,35 +211,54 @@ export default function Home() {
               <div className="bg-white dark:bg-black rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-800 flex-1 flex flex-col">
                 <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center space-x-3 md:space-x-4">
-                    <div className="w-7 h-7 md:w-8 md:h-8 bg-black dark:bg-white rounded-full flex items-center justify-center">
-                      <span className="text-white dark:text-black font-bold text-xs md:text-sm">AI</span>
+                    <div className="w-7 h-7 md:w-8 md:h-8 dark:bg-white rounded-full flex items-center justify-center">
+                      <span className="text-white dark:text-black font-bold text-xs md:text-sm">
+                        <UserButton />
+                      </span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-black dark:text-white text-sm md:text-base">AI Assistant</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Always here to help</p>
+                      <h3 className="font-semibold text-black dark:text-white text-sm md:text-base">
+                        {userState.fullName || 'Guest User'}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Last active: {new Date(userState.lastActive).toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
-                  <div className="flex items-start space-x-2 md:space-x-3">
-                    <div className="w-5 h-5 md:w-6 md:h-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                      <span className="text-black dark:text-white text-xs">U</span>
+                  {messages.map((message, index) => (
+                    <div key={index} className="flex items-start space-x-2 md:space-x-3">
+                      <div className="w-5 h-5 md:w-6 md:h-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                        <span className="text-black dark:text-white text-xs">{message.isUser ? 'U' : 'AI'}</span>
+                      </div>
+                      <div className={`font-[Cool] ${message.isUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-800'} rounded-lg p-2 md:p-3 max-w-[80%]`}>
+                        <p className="font-[Cool] text-black dark:text-white text-sm md:text-base">{message.text}</p>
+                      </div>
                     </div>
-                    <div className="font-[Cool] bg-gray-100 dark:bg-gray-800 rounded-lg p-2 md:p-3 max-w-[80%]">
-                      <p className="font-[Cool] text-black dark:text-white text-sm md:text-base">Hello! How can I assist you today?</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
                 <div className="p-2 md:p-3 border-t border-gray-200 dark:border-gray-800">
                   <div className="flex items-center space-x-2 md:space-x-4">
                     <input
                       type="text"
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
                       placeholder="Type your message..."
                       className="flex-1 p-2 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white bg-white dark:bg-black text-black dark:text-white text-sm md:text-base"
                     />
-                    <button className="px-3 md:px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors text-sm md:text-base">
+                    <button 
+                      onClick={handleSendMessage}
+                      disabled={!inputMessage.trim()}
+                      className={`px-3 md:px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg transition-colors text-sm md:text-base ${
+                        !inputMessage.trim() 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : 'hover:bg-gray-800 dark:hover:bg-gray-200'
+                      }`}
+                    >
                       Send
                     </button>
                   </div>
