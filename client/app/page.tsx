@@ -5,11 +5,23 @@ import { useRef, useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import Cookies from 'js-cookie';
 
-// Define user state interface
+// Define interfaces
 interface UserState {
   fullName: string | null;
   email: string | null;
   lastActive: string;
+}
+
+interface Reference {
+  text: string;
+  page?: number;
+  source?: string;
+}
+
+interface Message {
+  text: string;
+  isUser: boolean;
+  references?: Reference[];
 }
 
 export default function Home() {
@@ -19,7 +31,7 @@ export default function Home() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState<string>('');
   const [jobId, setJobId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{ text: string; isUser: boolean }>>([
+  const [messages, setMessages] = useState<Message[]>([
     { text: "Hello! How can I assist you today?", isUser: false }
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -101,7 +113,6 @@ export default function Home() {
     setInputMessage('');
 
     try {
-      // TODO: Replace with actual API call to your backend
       const response = await fetch(`http://localhost:8000/chat?message=${encodeURIComponent(inputMessage)}`, {
         method: 'GET',
         headers: {
@@ -111,8 +122,16 @@ export default function Home() {
 
       const data = await response.json();
       
-      // Add AI response
-      setMessages(prev => [...prev, { text: data.message || "I'm sorry, I couldn't process that request.", isUser: false }]);
+      // Add AI response with references
+      setMessages(prev => [...prev, { 
+        text: data.message || "I'm sorry, I couldn't process that request.", 
+        isUser: false,
+        references: data.docs?.map((doc: any) => ({
+          text: doc.pageContent,
+          page: doc.metadata?.page,
+          source: doc.metadata?.source
+        }))
+      }]);
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, { text: "Sorry, there was an error processing your message.", isUser: false }]);
@@ -122,6 +141,26 @@ export default function Home() {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSendMessage();
+    }
+  };
+
+  const handleDownload = async (source: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/download?file=${encodeURIComponent(source)}`);
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = source.split('/').pop() || 'document.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      // You might want to show a toast notification here
     }
   };
 
@@ -163,7 +202,7 @@ export default function Home() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] bg-white dark:bg-black">
+    <div className="h-[calc(108vh-4rem)] bg-white dark:bg-black">
       <SignedIn>
         <div className="flex flex-col md:flex-row h-full">
           {/* Left Side - File Upload Area */}
@@ -229,13 +268,53 @@ export default function Home() {
                 
                 <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
                   {messages.map((message, index) => (
-                    <div key={index} className="flex items-start space-x-2 md:space-x-3">
-                      <div className="w-5 h-5 md:w-6 md:h-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                        <span className="text-black dark:text-white text-xs">{message.isUser ? 'U' : 'AI'}</span>
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-start space-x-2 md:space-x-3">
+                        <div className="w-5 h-5 md:w-6 md:h-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                          <span className="text-black dark:text-white text-xs">{message.isUser ? 'U' : 'AI'}</span>
+                        </div>
+                        <div className={`font-[Cool] ${message.isUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-800'} rounded-lg p-2 md:p-3 max-w-[80%]`}>
+                          <p className="font-[Cool] text-black dark:text-white text-sm md:text-base">{message.text}</p>
+                        </div>
                       </div>
-                      <div className={`font-[Cool] ${message.isUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-800'} rounded-lg p-2 md:p-3 max-w-[80%]`}>
-                        <p className="font-[Cool] text-black dark:text-white text-sm md:text-base">{message.text}</p>
-                      </div>
+                      
+                      {/* Reference Cards */}
+                      {!message.isUser && message.references && message.references.length > 0 && (
+                        <div className="ml-8 space-y-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">References:</p>
+                          <div className="grid grid-cols-1 gap-2">
+                            {message.references.map((ref, refIndex) => (
+                              <div 
+                                key={refIndex}
+                                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-xs"
+                              >
+                                <p className="text-gray-700 dark:text-gray-300 mb-1">{ref.text}</p>
+                                <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
+                                  {ref.source && (
+                                    <button
+                                      onClick={() => handleDownload(ref.source!)}
+                                      className="flex items-center hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                                    >
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      {ref.source}
+                                    </button>
+                                  )}
+                                  {ref.page && (
+                                    <span className="flex items-center">
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
+                                      </svg>
+                                      Page {ref.page}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

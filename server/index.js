@@ -125,6 +125,41 @@ app.get('/chat', async (req,res)=>{
     });
 })
 
+app.get('/download', async (req, res) => {
+    const fileName = req.query.file;
+    if (!fileName) {
+        return res.status(400).json({ success: false, message: 'No file specified.' });
+    }
+
+    try {
+        const filePath = path.join(__dirname, 'uploads', fileName);
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, message: 'File not found.' });
+        }
+
+        // Set headers for file download
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-Type', 'application/pdf');
+
+        // Stream the file to the response
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+
+        // Handle errors during streaming
+        fileStream.on('error', (error) => {
+            console.error('Error streaming file:', error);
+            if (!res.headersSent) {
+                res.status(500).json({ success: false, message: 'Error streaming file.' });
+            }
+        });
+    } catch (error) {
+        console.error('Error processing download:', error);
+        res.status(500).json({ success: false, message: 'Error processing file download.' });
+    }
+});
+
 app.listen(8000, () => {
     console.log('Server is running on port 8000');
 });
