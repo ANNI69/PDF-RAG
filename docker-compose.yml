@@ -1,9 +1,52 @@
+version: '3.8'
+
 services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://valky:6379
+      - QDRANT_URL=http://qdrant:6333
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - ./server/uploads:/app/uploads
+    depends_on:
+      - valky
+      - qdrant
+
   valky:
     image: valkey/valkey
     ports: 
-      - 6379:6379
+      - "6379:6379"
+    volumes:
+      - valky_data:/data
+
   qdrant:
     image: qdrant/qdrant
     ports:
-      - 6333:6333
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  valky_data:
+  qdrant_data:
