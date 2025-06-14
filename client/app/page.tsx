@@ -4,6 +4,7 @@ import { SignedIn, SignedOut, SignUpButton, UserButton } from "@clerk/nextjs";
 import { useRef, useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import Cookies from 'js-cookie';
+import { useRouter } from 'next/navigation';
 
 // Define interfaces
 interface UserState {
@@ -22,10 +23,12 @@ interface Message {
   text: string;
   isUser: boolean;
   references?: Reference[];
+  hasPlanLink?: boolean;
 }
 
 export default function Home() {
 
+  const router = useRouter();
   const { user } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -72,7 +75,7 @@ export default function Home() {
       formData.append('file', files[0]);
 
       try {
-        const response = await fetch('http://localhost:8000/upload', {
+        const response = await fetch('/upload', {
           method: 'POST',
           body: formData,
         });
@@ -113,7 +116,7 @@ export default function Home() {
     setInputMessage('');
 
     try {
-      const response = await fetch(`http://localhost:8000/chat?message=${encodeURIComponent(inputMessage)}`, {
+      const response = await fetch(`/chat?message=${encodeURIComponent(inputMessage)}&userId=${user?.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -121,6 +124,15 @@ export default function Home() {
       });
 
       const data = await response.json();
+      
+      if (data.limitReached) {
+        setMessages(prev => [...prev, { 
+          text: "You have reached your limit of 3 inputs. Please upgrade your ",
+          isUser: false,
+          hasPlanLink: true
+        }]);
+        return;
+      }
       
       // Add AI response with references
       setMessages(prev => [...prev, { 
@@ -274,7 +286,20 @@ export default function Home() {
                           <span className="text-black dark:text-white text-xs">{message.isUser ? 'U' : 'AI'}</span>
                         </div>
                         <div className={`font-[Cool] ${message.isUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-800'} rounded-lg p-2 md:p-3 max-w-[80%]`}>
-                          <p className="font-[Cool] text-black dark:text-white text-sm md:text-base">{message.text}</p>
+                          <p className="font-[Cool] text-black dark:text-white text-sm md:text-base">
+                            {message.text}
+                            {message.hasPlanLink && (
+                              <span>
+                                <button 
+                                  onClick={() => router.push('/plan')}
+                                  className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                                >
+                                  plans
+                                </button>
+                                {" to continue."}
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
                       

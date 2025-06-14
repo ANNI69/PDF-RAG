@@ -28,16 +28,14 @@ const queue = new Queue('file-upload-queue', {
     }
 });
 
-
 // Get directory path for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(cors({
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true,
-}));
+// Add user input tracking
+const userInputCounts = new Map();
+
+app.use(cors());
 
 app.get('/', (req, res) => {
     res.json({ message: 'Hello World' });
@@ -79,6 +77,25 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
 app.get('/chat', async (req,res)=>{
     const userQuery = req.query.message;
+    const userId = req.query.userId; // Get userId from query params
+
+    // Check if user has exceeded their limit
+    if (!userInputCounts.has(userId)) {
+        userInputCounts.set(userId, 0);
+    }
+
+    const currentCount = userInputCounts.get(userId);
+    if (currentCount >= 3) {
+        return res.status(429).json({
+            success: false,
+            message: "You have reached your limit of 3 inputs. Please upgrade your plan to continue.",
+            limitReached: true
+        });
+    }
+
+    // Increment the count
+    userInputCounts.set(userId, currentCount + 1);
+
     const embeddings = new OpenAIEmbeddings({
         model: 'text-embedding-3-small',
         apiKey: process.env.OPENAI_API_KEY
