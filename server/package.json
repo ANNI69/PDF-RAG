@@ -12,7 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@langchain/community": "^0.3.41",
+    "@langchain/community": "^0.0.28",
     "@langchain/core": "^0.3.46",
     "@langchain/deepseek": "^0.0.1",
     "@langchain/openai": "^0.5.6",
