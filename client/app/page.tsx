@@ -75,7 +75,7 @@ export default function Home() {
       formData.append('file', files[0]);
 
       try {
-        const response = await fetch('/upload', {
+        const response = await fetch('http://localhost:8000/upload', {
           method: 'POST',
           body: formData,
         });
@@ -116,7 +116,7 @@ export default function Home() {
     setInputMessage('');
 
     try {
-      const response = await fetch(`/chat?message=${encodeURIComponent(inputMessage)}&userId=${user?.id}`, {
+      const response = await fetch(`http://localhost:8000/chat?message=${encodeURIComponent(inputMessage)}&userId=${user?.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -383,9 +383,9 @@ export default function Home() {
             <p className="font-[Cool] text-xl text-gray-600 dark:text-gray-400 max-w-2xl">
               Experience the power of AI-driven conversations. Get instant answers, insights, and assistance with our advanced chatbot.
             </p>
-            <button className="font-sans px-8 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
-            <SignUpButton /> Now!
-            </button>
+            <h2 className="font-sans px-8 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
+            <SignUpButton />
+            </h2>
           </div>
         </div>
 
