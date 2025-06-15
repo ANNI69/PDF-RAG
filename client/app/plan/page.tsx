@@ -1,5 +1,5 @@
 "use client";
-import { Check, Star, Zap } from "lucide-react"
+import { Check, Zap } from "lucide-react"
 import { useRouter } from 'next/navigation';
 
 export default function PricingPage() {
