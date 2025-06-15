@@ -18,6 +18,14 @@ interface Reference {
   source?: string;
 }
 
+interface Document {
+  pageContent: string;
+  metadata?: {
+    page?: number;
+    source?: string;
+  };
+}
+
 interface Message {
   text: string;
   isUser: boolean;
@@ -137,7 +145,7 @@ export default function Home() {
       setMessages(prev => [...prev, { 
         text: data.message || "I'm sorry, I couldn't process that request.", 
         isUser: false,
-        references: data.docs?.map((doc: any) => ({
+        references: data.docs?.map((doc: Document) => ({
           text: doc.pageContent,
           page: doc.metadata?.page,
           source: doc.metadata?.source
@@ -152,26 +160,6 @@ export default function Home() {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSendMessage();
-    }
-  };
-
-  const handleDownload = async (source: string) => {
-    try {
-      const response = await fetch(`http://localhost:8000/download?file=${encodeURIComponent(source)}`);
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = source.split('/').pop() || 'document.pdf';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      // You might want to show a toast notification here
     }
   };
 
@@ -316,7 +304,6 @@ export default function Home() {
                                 <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
                                   {ref.source && (
                                     <button
-                                      onClick={() => handleDownload(ref.source!)}
                                       className="flex items-center hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
                                     >
                                       <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
