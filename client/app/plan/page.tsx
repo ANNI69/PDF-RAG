@@ -11,12 +11,8 @@ export default function PricingPage() {
                 {/* Header Section */}
                 <div className="text-center mb-20">
                     <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-200 mb-6">
-                        <Star className="h-4 w-4 text-blue-500 mr-2" />
                         <span className="text-sm font-medium text-blue-700">Simple, transparent pricing</span>
                     </div>
-                    <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-6">
-                        Choose Your Plan
-                    </h1>
                     <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                         Start for free and scale as you grow. No hidden fees, no surprises. Cancel anytime with just one click.
                     </p>
@@ -157,7 +153,7 @@ export default function PricingPage() {
                             <h3 className="font-bold text-gray-900 mb-3 text-xl">Can I cancel anytime?</h3>
                             <p className="text-gray-600 text-lg leading-relaxed">
                                 You can cancel your subscription at any time with just one click. Your plan will remain active until the
-                                end of your billing period, so you never lose what you've paid for.
+                                end of your billing period, so you never lose what you have paid for.
                             </p>
                         </div>
                         <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
