@@ -1,6 +1,5 @@
 "use client";
-import Image from "next/image";
-import { SignedIn, SignedOut, SignUpButton, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignUpButton, UserButton,  } from "@clerk/nextjs";
 import { useRef, useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import Cookies from 'js-cookie';
